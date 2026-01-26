@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 61.3.2 # 建议固定版本，防止漂移
+    helm:
+      values: |
+        # 1. 配置 Grafana
+        grafana:
+          adminPassword: "admin" # 偷懒写法，生产环境应该用 Secret
+          ingress:
+            enabled: true
+            ingressClassName: nginx
+            hosts:
+              - grafana.homelab.local
+            path: /
+
+        # 2. 配置 Prometheus UI (可选，一般查问题才用)
+        prometheus:
+          ingress:
+            enabled: true
+            ingressClassName: nginx
+            hosts:
+              - prometheus.homelab.local
+            path: /
+          prometheusSpec:
+            # 告诉 Prometheus 也要监控 Ingress-Nginx (我们之前埋过伏笔)
+            serviceMonitorSelectorNilUsesHelmValues: false
+            serviceMonitorSelector: {}
+            serviceMonitorNamespaceSelector: {}
+
+        # 3. 针对 K3s 的一些特殊修补 (K3s 的组件路径和标准 K8s 不同)
+        kubeControllerManager:
+          enabled: false # K3s 默认很难监控到这个，先关掉防止报错
+        kubeScheduler:
+          enabled: false # 同上
+        kubeEtcd:
+          enabled: false # 同上
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
