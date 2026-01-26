@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-nginx
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes.github.io/ingress-nginx
+    targetRevision: 4.10.0
+    chart: ingress-nginx
+    helm:
+      parameters:
+        # 关键：让 Controller 获取 MetalLB 的 IP
+        - name: controller.service.type
+          value: LoadBalancer
+        # 关键：设置 ingress class 为默认，防止冲突
+        - name: controller.ingressClassResource.default
+          value: "true"
+        - name: controller.watchIngressWithoutClass
+          value: "true"
+        # 开启监控指标 (为后面的 Prometheus 埋伏笔)
+        - name: controller.metrics.enabled
+          value: "true"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ingress-nginx
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
