@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://charts.longhorn.io
+    chart: longhorn
+    targetRevision: 1.6.0 # 建议锁定版本
+    helm:
+      values: |
+        persistence:
+          defaultClassReplicaCount: 2 # 只有3个节点，设为2副本比较安全，设3副本如果坏一台容易变只读
+
+        # 开启 Ingress，为了看到那个超酷的 UI
+        ingress:
+          enabled: true
+          ingressClassName: nginx
+          host: longhorn.homelab.local
+          path: /
+
+        # 默认设置 Longhorn 为默认 StorageClass
+        defaultSettings:
+          createDefaultDiskLabeledNodes: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
