@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ingress-nginx-monitor
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack # 加上这个标签，Prometheus 才能识别
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx # 对应你 Ingress Controller Service 的标签
+  namespaceSelector:
+    matchNames:
+      - ingress-nginx
+  endpoints:
+    - port: http-metrics
+      interval: 15s
